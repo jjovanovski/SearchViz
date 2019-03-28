@@ -62,8 +62,11 @@ namespace SearchViz {
         name: string;
         problem: Problem;
 
+        terminated: boolean;
+
         constructor(name: string) {
             this.name = name;
+            this.terminated = false;
         }
 
         run() {
@@ -314,6 +317,8 @@ namespace SearchViz {
         }
 
         step() {
+            if(this.terminated) return;
+
             if(this.queue.isEmpty() == false) {
                 let u: Node = this.queue.dequeue();
 
@@ -337,6 +342,8 @@ namespace SearchViz {
                             this.astarTreeNodes[v.index].state = AStarNodeState.Goal;
                             
                             this.renderer.render(this);
+                            
+                            this.terminated = true;
                             return;
                         }
                     }

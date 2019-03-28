@@ -48,6 +48,7 @@ var SearchViz;
     var Algorithm = /** @class */ (function () {
         function Algorithm(name) {
             this.name = name;
+            this.terminated = false;
         }
         Algorithm.prototype.run = function () {
             // OVERRIDE
@@ -230,6 +231,8 @@ var SearchViz;
             this.renderer.render(this);
         };
         AStar.prototype.step = function () {
+            if (this.terminated)
+                return;
             if (this.queue.isEmpty() == false) {
                 var u = this.queue.dequeue();
                 this.astarTreeNodes[u.index].state = AStarNodeState.Expanded;
@@ -247,6 +250,7 @@ var SearchViz;
                         if (v.index == this.problem.goalNode.index) {
                             this.astarTreeNodes[v.index].state = AStarNodeState.Goal;
                             this.renderer.render(this);
+                            this.terminated = true;
                             return;
                         }
                     }
