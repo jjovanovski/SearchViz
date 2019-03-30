@@ -369,7 +369,9 @@ namespace SearchViz {
         renderSubtree(root: AStarNode, x: number, y: number) {
             let childX = x - root.subtreeWidth / 2.0;
             for(let i = 0; i < root.adj.length; i++) {
-                let subtreeX = childX + root.adj[i].subtreeWidth/2.0;
+                let subtreeRoot = root.adj[i];
+                let requiredSpace = Math.max(subtreeRoot.width, subtreeRoot.subtreeWidth);
+                let subtreeX = childX + requiredSpace/2.0;
                 let subtreeY = y+50;
 
                 // render edges
@@ -379,10 +381,9 @@ namespace SearchViz {
                 this.ctx.stroke();
                 this.ctx.closePath();
 
-                let subtreeRoot = root.adj[i];
                 this.renderSubtree(subtreeRoot, subtreeX, subtreeY);
 
-                childX += root.adj[i].subtreeWidth + SUBTREE_SPACING;
+                childX += requiredSpace + SUBTREE_SPACING;
             }
 
             root.x = x;
@@ -398,14 +399,14 @@ namespace SearchViz {
                 let subtreeRoot = root.adj[i];
                 this.calcSubtreeWidth(subtreeRoot);
 
-                subtreeWidth += subtreeRoot.subtreeWidth;
+                subtreeWidth += Math.max(subtreeRoot.width, subtreeRoot.subtreeWidth);
                 // add spacing
                 if(i < root.adj.length-1) {
                     subtreeWidth += SUBTREE_SPACING;
                 }
             }
 
-            subtreeWidth = Math.max(subtreeWidth, root.width);
+            //subtreeWidth = Math.max(subtreeWidth, root.width);
             root.subtreeWidth = subtreeWidth;
         }
 
@@ -414,38 +415,21 @@ namespace SearchViz {
     /* ============ PROBLEM DEFINITION ============ */
 
     // create nodes
-    let sk: Node = new Node(0, "Skopje");
-    let te: Node = new Node(1, "Tetovo");
-    let ve: Node = new Node(2, "Veles");
-    let go: Node = new Node(3, "Gostivar");
-    let ki: Node = new Node(4, "Kicevo");
-    let sr: Node = new Node(5, "Struga");
-    let bi: Node = new Node(6, "Bitola");
-    let oh: Node = new Node(7, "Ohrid");
+    let stdavids = new Node(0, "Exter St. Davids");
+    let bidston = new Node(1, "Bidston");
+    let cap = new Node(2, "CAPOasdasd");
 
-    // add edges
-    sk.addEdge(te, 2);
-    sk.addEdge(ve, 3);
-    te.addEdge(go, 1);
-    go.addEdge(ki, 3);
-    go.addEdge(sr, 2);
-    sr.addEdge(oh, 1);
-    ki.addEdge(oh, 2);
-    ve.addEdge(bi, 3);
-    bi.addEdge(oh, 2);
+    // create edges
+    stdavids.addEdge(cap, 2);
+    //stdavids.addEdge(bidston, 1);
 
     // add heuristics
-    sk.heuristic = 10;
-    te.heuristic = 9;
-    go.heuristic = 8;
-    ki.heuristic = 7;
-    ve.heuristic = 6;
-    sr.heuristic = 5;
-    bi.heuristic = 9;
-    oh.heuristic = 2;
+    stdavids.heuristic = 100;
+    bidston.heuristic = 0;
+    cap.heuristic = 10;
 
-    let nodes: Node[] = [sk, te, ve, go, ki, sr, bi, oh];
-    let problem = new Problem(nodes, sk, oh);
+    let nodes: Node[] = [stdavids, bidston, cap];
+    let problem = new Problem(nodes, stdavids, bidston);
 
     let astar: AStar = new AStar("searchviz");
     astar.problem = problem;

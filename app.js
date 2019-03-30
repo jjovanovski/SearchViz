@@ -274,7 +274,9 @@ var SearchViz;
         AStarRenderer.prototype.renderSubtree = function (root, x, y) {
             var childX = x - root.subtreeWidth / 2.0;
             for (var i = 0; i < root.adj.length; i++) {
-                var subtreeX = childX + root.adj[i].subtreeWidth / 2.0;
+                var subtreeRoot = root.adj[i];
+                var requiredSpace = Math.max(subtreeRoot.width, subtreeRoot.subtreeWidth);
+                var subtreeX = childX + requiredSpace / 2.0;
                 var subtreeY = y + 50;
                 // render edges
                 this.ctx.beginPath();
@@ -282,9 +284,8 @@ var SearchViz;
                 this.ctx.lineTo(subtreeX, subtreeY);
                 this.ctx.stroke();
                 this.ctx.closePath();
-                var subtreeRoot = root.adj[i];
                 this.renderSubtree(subtreeRoot, subtreeX, subtreeY);
-                childX += root.adj[i].subtreeWidth + SUBTREE_SPACING;
+                childX += requiredSpace + SUBTREE_SPACING;
             }
             root.x = x;
             root.y = y;
@@ -296,13 +297,13 @@ var SearchViz;
             for (var i = 0; i < root.adj.length; i++) {
                 var subtreeRoot = root.adj[i];
                 this.calcSubtreeWidth(subtreeRoot);
-                subtreeWidth += subtreeRoot.subtreeWidth;
+                subtreeWidth += Math.max(subtreeRoot.width, subtreeRoot.subtreeWidth);
                 // add spacing
                 if (i < root.adj.length - 1) {
                     subtreeWidth += SUBTREE_SPACING;
                 }
             }
-            subtreeWidth = Math.max(subtreeWidth, root.width);
+            //subtreeWidth = Math.max(subtreeWidth, root.width);
             root.subtreeWidth = subtreeWidth;
         };
         return AStarRenderer;
