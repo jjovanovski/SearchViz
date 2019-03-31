@@ -1,7 +1,7 @@
 namespace SearchViz {
 
     let INF = 999999999;
-    let SUBTREE_SPACING = 60;
+    let SUBTREE_SPACING = 90;
 
     class Problem {
 
@@ -158,6 +158,64 @@ namespace SearchViz {
         clear(): void {
             this.items = [];
             this.count = 0;
+        }
+
+    }
+
+    /* ============ TREE DRAWING ============ */
+
+    let TREENODE_STATE_UNDISCOVERED: number = 0;
+    let TREENODE_STATE_DISCOVERED: number = 1;
+    let TREENODE_STATE_OPENED: number = 2;
+    let TREENODE_STATE_CLOSED: number = 3;
+    let TREENODE_STATE_GOAL: number = 4;
+
+    class TreeNode {
+
+        index: number;
+        name: string;
+        state: number;
+
+        children: TreeNode[];
+        expand: Function;
+
+        x: number = 0;
+        y: number = 0;
+        width: number = 0;
+        height: number = 0;
+        padding: number = 10;
+        subtreeWidth: number = 0;
+
+        font: string = "Arial";
+        fontSize: number = 16;
+        fontColor: string = "#333";
+
+        backgroundColor: string = "#ffff00";
+        borderColor: string = "#333";
+
+        constructor(index: number, name: string) {
+            this.index = index;
+            this.name = name;
+            this.state = TREENODE_STATE_UNDISCOVERED;
+            this.children = [];
+        }
+
+        drawTree(ctx: CanvasRenderingContext2D) {
+            this.setupStyle(ctx);
+        }
+
+        drawSubtree(ctx: CanvasRenderingContext2D) {
+
+        }
+
+        setupStyle(ctx: CanvasRenderingContext2D) {
+            ctx.font = this.fontSize + "px " + this.font;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            
+            var textSize = ctx.measureText(this.name);
+            this.width = textSize.width + this.padding;
+            this.height = 18 + this.padding;
         }
 
     }
@@ -322,6 +380,16 @@ namespace SearchViz {
             if(this.queue.isEmpty() == false) {
                 let u: Node = this.queue.dequeue();
 
+                // check for goal
+                if(u.name == this.problem.goalNode.name) {
+                    this.astarTreeNodes[u.index].state = AStarNodeState.Goal;
+                    
+                    this.renderer.render(this);
+                    
+                    this.terminated = true;
+                    return;
+                }
+
                 this.astarTreeNodes[u.index].state = AStarNodeState.Expanded;
 
                 for(let i = 0; i < u.edges.length; i++) {
@@ -329,24 +397,14 @@ namespace SearchViz {
                     let v: Node = edge.nodeTo;
 
                     // exploring only unvisited nodes!
-                    if(v.cost == INF) {
+                    //if(v.cost == INF) {
                         v.cost = u.cost + edge.cost;
                         this.queue.enqueue(v);
 
                         this.astarTreeNodes[v.index].state = AStarNodeState.Discovered;
                         this.astarTreeNodes[v.index].setCost(v.cost);
                         this.astarTreeNodes[u.index].adj.push(this.astarTreeNodes[v.index]);
-
-                        // check for goal
-                        if(v.index == this.problem.goalNode.index) {
-                            this.astarTreeNodes[v.index].state = AStarNodeState.Goal;
-                            
-                            this.renderer.render(this);
-                            
-                            this.terminated = true;
-                            return;
-                        }
-                    }
+                    //}
                 }
             }
 
@@ -363,7 +421,7 @@ namespace SearchViz {
             let startNode = astar.astarTreeNodes[astar.problem.startNode.index];
 
             this.calcSubtreeWidth(startNode);
-            this.renderSubtree(startNode, this.canvasWidth/2.0, 50);
+            this.renderSubtree(startNode, startNode.subtreeWidth/2.0 + 120, 50);
         }
 
         renderSubtree(root: AStarNode, x: number, y: number) {
@@ -415,21 +473,65 @@ namespace SearchViz {
     /* ============ PROBLEM DEFINITION ============ */
 
     // create nodes
-    let stdavids = new Node(0, "Exter St. Davids");
+    let exeter = new Node(0, "Exter St. Davids");
     let bidston = new Node(1, "Bidston");
-    let cap = new Node(2, "CAPOasdasd");
+    let bidston1 = new Node(11, "Bidston");
+    let bidston2 = new Node(12, "Bidston");
+    let bidston3 = new Node(13, "Bidston");
+    let bidston4 = new Node(14, "Bidston");
+    let bidston5 = new Node(15, "Bidston");
+    let bidston6 = new Node(16, "Bidston");
+    let bidston7 = new Node(17, "Bidston");
+    let oxford = new Node(2, "Oxford");
+    let bristol = new Node(3, "Bristol");
+    let swindon = new Node(4, "Swindon");
+    let birmingham = new Node(5, "Birmingham");
+    let conventry = new Node(6, "Conventry");
+    let wolverhampton = new Node(7, "Wolverhampton");
+    let shrewsburry = new Node(8, "Shrewsbury");
+    let newport = new Node(9, "Newport");
+    let london = new Node(10, "London");
 
     // create edges
-    stdavids.addEdge(cap, 2);
-    //stdavids.addEdge(bidston, 1);
+    exeter.addEdge(oxford, 185);
+    exeter.addEdge(bristol, 100);
+    exeter.addEdge(swindon, 146);
+
+    oxford.addEdge(birmingham, 71);
+    oxford.addEdge(conventry, 166);
+    oxford.addEdge(wolverhampton, 93);
+
+    bristol.addEdge(birmingham, 199);
+    bristol.addEdge(shrewsburry, 168);
+    bristol.addEdge(newport, 40);
+
+    swindon.addEdge(london, 298);
+    swindon.addEdge(bristol, 36);
+    swindon.addEdge(birmingham, 235);
+
+    birmingham.addEdge(bidston1, 165);
+    conventry.addEdge(bidston2, 176);
+    wolverhampton.addEdge(bidston3, 172);
+    shrewsburry.addEdge(bidston4, 108);
+    newport.addEdge(bidston5, 279);
+    london.addEdge(bidston6, 210);
+    bristol.addEdge(bidston7, 387);
 
     // add heuristics
-    stdavids.heuristic = 100;
+    exeter.heuristic = 211;
+    oxford.heuristic = 156;
+    bristol.heuristic = 154;
+    swindon.heuristic = 157;
+    birmingham.heuristic = 91;
+    conventry.heuristic = 98;
+    wolverhampton.heuristic = 78;
+    shrewsburry.heuristic = 68;
+    newport.heuristic = 142;
+    london.heuristic = 205;
     bidston.heuristic = 0;
-    cap.heuristic = 10;
 
-    let nodes: Node[] = [stdavids, bidston, cap];
-    let problem = new Problem(nodes, stdavids, bidston);
+    let nodes: Node[] = [exeter, bidston, oxford, bristol, swindon, birmingham, conventry, wolverhampton, shrewsburry, newport, london, bidston1, bidston2, bidston3, bidston4, bidston5, bidston7, bidston7];
+    let problem = new Problem(nodes, exeter, bidston);
 
     let astar: AStar = new AStar("searchviz");
     astar.problem = problem;
