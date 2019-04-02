@@ -1,7 +1,8 @@
 namespace SearchViz {
 
     let INF = 999999999;
-    let SUBTREE_SPACING = 90;
+    let SUBTREE_SPACING_HORIZONTAL = 60;
+    let SUBTREE_SPACING_VERTICAL = 60;
 
     class Problem {
 
@@ -200,103 +201,34 @@ namespace SearchViz {
             this.children = [];
         }
 
-        drawTree(ctx: CanvasRenderingContext2D) {
+        drawTree(ctx: CanvasRenderingContext2D, x: number, y: number) {
             this.setupStyle(ctx);
+            this.calculateSubtreeWidth(ctx);
+            this.drawSubtree(ctx, x, y);
         }
 
-        drawSubtree(ctx: CanvasRenderingContext2D) {
+        drawSubtree(ctx: CanvasRenderingContext2D, x: number, y: number) {
+            this.x = x;
+            this.y = y;
 
-        }
+            let subtreeX = x - this.subtreeWidth / 2.0;
 
-        setupStyle(ctx: CanvasRenderingContext2D) {
-            ctx.font = this.fontSize + "px " + this.font;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            
-            var textSize = ctx.measureText(this.name);
-            this.width = textSize.width + this.padding;
-            this.height = 18 + this.padding;
-        }
+            // draw children
+            for(let i = 0; i < this.children.length; i++) {
+                let child = this.children[i];
+                let childRequiredWidth = Math.max(child.width, child.subtreeWidth);
+                let childX = subtreeX + childRequiredWidth / 2.0;
+                let childY = y + SUBTREE_SPACING_VERTICAL;
 
-    }
+                // render edges
+                this.drawEdge(ctx, x, y, childX, childY);
 
-    /* ============ A* ALGORITHM ============ */
+                child.drawSubtree(ctx, childX, childY);
 
-    enum AStarNodeState {
-        Undiscovered,
-        Discovered,
-        Expanded,
-        Goal
-    }
-
-    class AStarNode {
-
-        index: number;
-        state: AStarNodeState;
-        adj: AStarNode[];
-
-        cost: number;
-        heuristic: number;
-        f: number;
-
-        label: string;
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-        padding: number;
-        borderColor: string;
-        backgroundColor: string;
-        labelColor: string;
-
-        subtreeWidth: number;
-
-        constructor(index: number, label: string, heuristic: number) {
-            this.index = index;
-            this.state = AStarNodeState.Undiscovered;
-            this.adj = [];
-
-            this.cost = INF;
-            this.heuristic = heuristic;
-            this.f = INF;
-
-            this.label = label;
-            this.x = 0;
-            this.y = 0;
-            this.width = 18;
-            this.height = 18;
-            this.padding = 10;
-            this.borderColor = "#444";
-            this.labelColor = "#444";
-
-            this.subtreeWidth = -1;
-        }
-
-        setCost(cost: number) {
-            this.cost = cost;
-            this.f = this.cost + this.heuristic;
-        }
-
-        setupStyle(ctx: CanvasRenderingContext2D) {
-            if(this.state === AStarNodeState.Discovered) {
-                this.backgroundColor = "#ffffff";
-            } else if(this.state === AStarNodeState.Expanded) {
-                this.backgroundColor = "#ffff00";
-            } else if(this.state === AStarNodeState.Goal) {
-                this.backgroundColor = "#00ff00";
+                subtreeX = subtreeX + childRequiredWidth + SUBTREE_SPACING_HORIZONTAL;
             }
 
-            ctx.font = "18px Arial";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            var textSize = ctx.measureText(this.label);
-            this.width = textSize.width + this.padding;
-            this.height = 18 + this.padding;
-        }
-
-        render(ctx: CanvasRenderingContext2D) {
-            this.setupStyle(ctx);
-
+            // draw this node
             ctx.beginPath();
             ctx.rect(this.x - this.width/2.0, this.y - this.height/2.0, this.width, this.height);
             // draw border
@@ -307,27 +239,94 @@ namespace SearchViz {
             ctx.fill();
             ctx.closePath();
             // draw label
-            ctx.font = "18px Arial";
+            ctx.font = this.fontSize + "px " + this.font;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillStyle = this.labelColor;
-            ctx.fillText(this.label, this.x, this.y);
+            ctx.fillStyle = this.fontColor;
+            ctx.fillText(this.name, this.x, this.y);
+        }
+
+        drawEdge(ctx: CanvasRenderingContext2D, fromX: number, fromY: number, toX: number, toY: number) {
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(fromX, (fromY + toY) / 2);
+
+            ctx.moveTo(fromX, (fromY + toY) / 2);
+            ctx.lineTo(toX, (fromY + toY) / 2);
+
+            ctx.moveTo(toX, (fromY + toY) / 2);
+            ctx.lineTo(toX, toY);
+            
+            ctx.stroke();
+            ctx.closePath();
+        }
+
+        setupStyle(ctx: CanvasRenderingContext2D) {
+            if(this.state === TREENODE_STATE_DISCOVERED) {
+                this.backgroundColor = "#ffffff";
+            } else if(this.state === TREENODE_STATE_OPENED) {
+                this.backgroundColor = "#ff00ff";
+            } else if(this.state === TREENODE_STATE_CLOSED) {
+                this.backgroundColor = "#ffff00";
+            } else if(this.state === TREENODE_STATE_GOAL) {
+                this.backgroundColor = "#00ff00";
+            }
+
+            ctx.font = this.fontSize + "px " + this.font;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            
+            var textSize = ctx.measureText(this.name);
+            this.width = textSize.width + this.padding;
+            this.height = 18 + this.padding;
+        }
+
+        calculateSubtreeWidth(ctx) {
+            let width = 0;
+
+            for(let i = 0; i < this.children.length; i++) {
+                this.children[i].setupStyle(ctx);
+                width += Math.max(this.children[i].width, this.children[i].calculateSubtreeWidth(ctx));
+                if(i < this.children.length-1)
+                    width += SUBTREE_SPACING_HORIZONTAL;
+            }
+
+            this.subtreeWidth = width;
+            return this.subtreeWidth;
+        }
+
+    }
+    
+    /* ============ A* ALGORITHM ============ */
+
+    class AStarNode extends TreeNode {
+
+        problemNode: Node;
+        cost: number;
+        heuristic: number;
+        f: number;
+
+        drawSubtree(ctx: CanvasRenderingContext2D, x: number, y: number) {
+            super.drawSubtree(ctx, x, y);
 
             ctx.font = "12px Arial";
-            ctx.textAlign = "left";
+            ctx.textAlign = "right";
             ctx.textBaseline = "middle";
             // draw cost label
-            let costStr = "g: " + (this.cost == INF ? "infinity" : this.cost);
+            let costStr = "g: " + (this.cost == INF ? "inf" : this.cost);
             ctx.fillStyle = "#ff4838";
-            ctx.fillText(costStr, this.x - this.width/2 - 5 - ctx.measureText(costStr).width, this.y - 8);
+            ctx.fillText(costStr, this.x - this.width/2 - 5, this.y - 12);
             // draw heuristic label
             let heurStr = "h: " + this.heuristic;
             ctx.fillStyle = "#17b9ef";
-            ctx.fillText(heurStr, this.x - this.width/2 - 5 - ctx.measureText(heurStr).width, this.y + 8);
+            ctx.fillText(heurStr, this.x - this.width/2 - 5, this.y);
             // draw f label
-            let fStr = "f: " + this.f;
+            let f = this.cost;
+            if(this.heuristic != INF)
+                f += this.heuristic;
+            let fStr = "f: " + (f == INF ? "inf" : f);
             ctx.fillStyle = "#1ca81e";
-            ctx.fillText(fStr, this.x + this.width/2 + 5, this.y);
+            ctx.fillText(fStr, this.x - this.width/2 - 5, this.y + 12);
         }
 
     }
@@ -336,16 +335,18 @@ namespace SearchViz {
 
         renderer: AStarRenderer;
 
-        astarTreeNodes: AStarNode[];
-        queue: PriorityQueue<Node>;
+        queue: PriorityQueue<AStarNode>;
+        startNode: AStarNode;
+        lastOpenedNode: AStarNode;
 
         constructor(canvasId: string) {
             super("AStar");
 
             this.renderer = new AStarRenderer(canvasId);
-            this.queue = new PriorityQueue<Node>((a: Node, b: Node) => {
-                let f_a = a.cost + a.heuristic;
-                let f_b = b.cost + b.heuristic;
+
+            this.queue = new PriorityQueue<AStarNode>((a: AStarNode, b: AStarNode) => {
+                let f_a = a.problemNode.cost + a.problemNode.heuristic;
+                let f_b = b.problemNode.cost + b.problemNode.heuristic;
                 if(f_a < f_b)
                     return -10;
                 else if(f_a == f_b)
@@ -355,117 +356,78 @@ namespace SearchViz {
         }
 
         run() {
-            // create astarnode for each node in the problem
-            // (we can do this because we visit each node only once!)
-            this.astarTreeNodes = [];
-            for(let i = 0; i < this.problem.nodes.length; i++) {
-                let node: Node = this.problem.nodes[i];
-                
-                let astarNode = new AStarNode(i, node.name, node.heuristic);
-                astarNode.setCost(0);
-                astarNode.state = AStarNodeState.Discovered;
-                this.astarTreeNodes.push(astarNode);
-            }
-
-            // initialize a* queue
             this.problem.startNode.cost = 0;
-            this.queue.enqueue(this.problem.startNode);
 
-            this.renderer.render(this);
+            this.startNode = this.createTreeNode(this.problem.startNode);
+            this.startNode.cost = 0;
+            this.queue.enqueue(this.startNode);
+
+            this.step();
         }
 
         step() {
-            if(this.terminated) return;
+            if(!this.terminated && !this.queue.isEmpty()) {
+                let u: AStarNode = this.queue.dequeue();
 
-            if(this.queue.isEmpty() == false) {
-                let u: Node = this.queue.dequeue();
+                // update states
+                u.state = TREENODE_STATE_OPENED;
+                if(this.lastOpenedNode)
+                    this.lastOpenedNode.state = TREENODE_STATE_CLOSED;
+                this.lastOpenedNode = u;
 
                 // check for goal
-                if(u.name == this.problem.goalNode.name) {
-                    this.astarTreeNodes[u.index].state = AStarNodeState.Goal;
-                    
-                    this.renderer.render(this);
-                    
-                    this.terminated = true;
+                if(u.problemNode.index == this.problem.goalNode.index) {
+                    u.state = TREENODE_STATE_GOAL;
+                    this.finish();
                     return;
                 }
 
-                this.astarTreeNodes[u.index].state = AStarNodeState.Expanded;
+                let edges: Edge[] = u.expand();
+                for(let i = 0; i < edges.length; i++) {
+                    let edge = edges[i];
 
-                for(let i = 0; i < u.edges.length; i++) {
-                    let edge: Edge = u.edges[i];
-                    let v: Node = edge.nodeTo;
-
-                    // exploring only unvisited nodes!
-                    //if(v.cost == INF) {
-                        v.cost = u.cost + edge.cost;
+                    if(edge.nodeTo.cost > u.problemNode.cost + edge.cost) {
+                        edge.nodeTo.cost = u.problemNode.cost + edge.cost;
+                        
+                        let v = this.createTreeNode(edge.nodeTo);
+                        v.state = TREENODE_STATE_DISCOVERED;
                         this.queue.enqueue(v);
 
-                        this.astarTreeNodes[v.index].state = AStarNodeState.Discovered;
-                        this.astarTreeNodes[v.index].setCost(v.cost);
-                        this.astarTreeNodes[u.index].adj.push(this.astarTreeNodes[v.index]);
-                    //}
+                        // add v as children to u in the search tree
+                        u.children.push(v);
+                    }
                 }
             }
 
             this.renderer.render(this);
         }
 
+        finish() {
+            this.terminated = true;
+            this.renderer.render(this);
+        }
+
+        createTreeNode(node: Node) {
+            let astarNode: AStarNode = new AStarNode(node.index, node.name);
+            astarNode.problemNode = node;
+            astarNode.cost = node.cost;
+            astarNode.heuristic = node.heuristic;
+            astarNode.f = node.cost + node.heuristic;
+
+            astarNode.expand = function() {
+                return astarNode.problemNode.edges;
+            };
+
+            return astarNode;
+        }
+
     }
-    
+
     class AStarRenderer extends AlgorithmRenderer {
 
         render(astar: AStar) {
             this.clear();
-
-            let startNode = astar.astarTreeNodes[astar.problem.startNode.index];
-
-            this.calcSubtreeWidth(startNode);
-            this.renderSubtree(startNode, startNode.subtreeWidth/2.0 + 120, 50);
-        }
-
-        renderSubtree(root: AStarNode, x: number, y: number) {
-            let childX = x - root.subtreeWidth / 2.0;
-            for(let i = 0; i < root.adj.length; i++) {
-                let subtreeRoot = root.adj[i];
-                let requiredSpace = Math.max(subtreeRoot.width, subtreeRoot.subtreeWidth);
-                let subtreeX = childX + requiredSpace/2.0;
-                let subtreeY = y+50;
-
-                // render edges
-                this.ctx.beginPath();
-                this.ctx.moveTo(x, y);
-                this.ctx.lineTo(subtreeX, subtreeY);
-                this.ctx.stroke();
-                this.ctx.closePath();
-
-                this.renderSubtree(subtreeRoot, subtreeX, subtreeY);
-
-                childX += requiredSpace + SUBTREE_SPACING;
-            }
-
-            root.x = x;
-            root.y = y;
-            root.render(this.ctx);
-        }
-
-        calcSubtreeWidth(root: AStarNode) {
-            root.setupStyle(this.ctx);
-
-            let subtreeWidth = 0;
-            for(let i = 0; i < root.adj.length; i++) {
-                let subtreeRoot = root.adj[i];
-                this.calcSubtreeWidth(subtreeRoot);
-
-                subtreeWidth += Math.max(subtreeRoot.width, subtreeRoot.subtreeWidth);
-                // add spacing
-                if(i < root.adj.length-1) {
-                    subtreeWidth += SUBTREE_SPACING;
-                }
-            }
-
-            //subtreeWidth = Math.max(subtreeWidth, root.width);
-            root.subtreeWidth = subtreeWidth;
+            astar.startNode.drawTree(this.ctx, 1400/2, 50);
         }
 
     }
@@ -473,64 +435,66 @@ namespace SearchViz {
     /* ============ PROBLEM DEFINITION ============ */
 
     // create nodes
-    let exeter = new Node(0, "Exter St. Davids");
+    let exeter = new Node(0, "Exeter St. Davids");
     let bidston = new Node(1, "Bidston");
-    let bidston1 = new Node(11, "Bidston");
-    let bidston2 = new Node(12, "Bidston");
-    let bidston3 = new Node(13, "Bidston");
-    let bidston4 = new Node(14, "Bidston");
-    let bidston5 = new Node(15, "Bidston");
-    let bidston6 = new Node(16, "Bidston");
-    let bidston7 = new Node(17, "Bidston");
     let oxford = new Node(2, "Oxford");
     let bristol = new Node(3, "Bristol");
     let swindon = new Node(4, "Swindon");
     let birmingham = new Node(5, "Birmingham");
-    let conventry = new Node(6, "Conventry");
+    let coventry = new Node(6, "Conventry");
     let wolverhampton = new Node(7, "Wolverhampton");
     let shrewsburry = new Node(8, "Shrewsbury");
     let newport = new Node(9, "Newport");
     let london = new Node(10, "London");
+    let plymouth = new Node(13, "Plymouth");
+    
+    let birmingham2 = new Node(11, "Birmingham");
+    let birmingham3 = new Node(12, "Birmingham");
 
     // create edges
-    exeter.addEdge(oxford, 185);
-    exeter.addEdge(bristol, 100);
-    exeter.addEdge(swindon, 146);
+    exeter.addEdge(oxford, 215);
+    exeter.addEdge(bristol, 131);
+    exeter.addEdge(swindon, 177);
 
-    oxford.addEdge(birmingham, 71);
-    oxford.addEdge(conventry, 166);
-    oxford.addEdge(wolverhampton, 93);
+    oxford.addEdge(birmingham, 73);
+    oxford.addEdge(coventry, 48);
+    oxford.addEdge(wolverhampton, 99);
 
-    bristol.addEdge(birmingham, 199);
-    bristol.addEdge(shrewsburry, 168);
-    bristol.addEdge(newport, 40);
+    bristol.addEdge(birmingham2, 218);
+    bristol.addEdge(shrewsburry, 187);
+    bristol.addEdge(newport, 76);
 
-    swindon.addEdge(london, 298);
-    swindon.addEdge(bristol, 36);
-    swindon.addEdge(birmingham, 235);
+    swindon.addEdge(london, 76);
+    swindon.addEdge(plymouth, 58);
+    swindon.addEdge(birmingham3, 142);
 
-    birmingham.addEdge(bidston1, 165);
-    conventry.addEdge(bidston2, 176);
-    wolverhampton.addEdge(bidston3, 172);
-    shrewsburry.addEdge(bidston4, 108);
-    newport.addEdge(bidston5, 279);
-    london.addEdge(bidston6, 210);
-    bristol.addEdge(bidston7, 387);
+    birmingham.addEdge(bidston, 198);
+    birmingham2.addEdge(bidston, 198);
+    birmingham3.addEdge(bidston, 198);
+    coventry.addEdge(bidston, 223);
+    wolverhampton.addEdge(bidston, 172);
+    shrewsburry.addEdge(bidston, 117);
+    newport.addEdge(bidston, 288);
+    london.addEdge(bidston, 233);
+    //bristol.addEdge(bidston, 260);
 
     // add heuristics
-    exeter.heuristic = 211;
-    oxford.heuristic = 156;
-    bristol.heuristic = 154;
-    swindon.heuristic = 157;
-    birmingham.heuristic = 91;
-    conventry.heuristic = 98;
-    wolverhampton.heuristic = 78;
-    shrewsburry.heuristic = 68;
-    newport.heuristic = 142;
-    london.heuristic = 205;
+    exeter.heuristic = 276;
+    oxford.heuristic = 204;
+    bristol.heuristic = 202;
+    swindon.heuristic = 205;
+    birmingham.heuristic = 120;
+    birmingham2.heuristic = 120;
+    birmingham3.heuristic = 120;
+    coventry.heuristic = 141;
+    wolverhampton.heuristic = 102;
+    shrewsburry.heuristic = 73;
+    newport.heuristic = 186;
+    london.heuristic = 268;
+    plymouth.heuristic = 301;
     bidston.heuristic = 0;
 
-    let nodes: Node[] = [exeter, bidston, oxford, bristol, swindon, birmingham, conventry, wolverhampton, shrewsburry, newport, london, bidston1, bidston2, bidston3, bidston4, bidston5, bidston7, bidston7];
+    let nodes: Node[] = [exeter, bidston, oxford, bristol, swindon, birmingham, coventry, wolverhampton, shrewsburry, newport, london, birmingham2, birmingham3];
     let problem = new Problem(nodes, exeter, bidston);
 
     let astar: AStar = new AStar("searchviz");
